@@ -1,111 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Star Wars Weather</title>
-    <style>
-        body {
-            background-color: black;
-            color: #ffe81f;
-            font-family: 'Arial', sans-serif;
-            text-align: center;
-            padding: 2rem;
-        }
-        h1 {
-            font-size: 3rem;
-            margin-bottom: 0.5rem;
-        }
-        #weather {
-            margin-top: 2rem;
-            font-size: 1.5rem;
-        }
-        .star {
-            color: #ffe81f;
-            font-weight: bold;
-        }
-        .loading {
-            font-style: italic;
-            color: #aaa;
-        }
-        footer {
-            margin-top: 3rem;
-            font-size: 0.8rem;
-            color: #666;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Star Wars Weather</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: black;
+      text-align: center;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    #planet {
+      font-size: 2em;
+      margin-top: 20vh;
+      background-color: rgba(255,255,255,0.7);
+      display: inline-block;
+      padding: 20px;
+      border-radius: 10px;
+    }
+  </style>
 </head>
 <body>
-    <h1>Star Wars Weather</h1>
-    <p>Get the weather on your favorite planet!</p>
-    <input type="text" id="locationInput" placeholder="Enter a city or planet name" />
-    <button id="getWeatherBtn">Get Weather</button>
-    <div id="weather"></div>
-    <footer>This site is not affiliated or endorsed by Google, Android or Tom Scott. This is merely a fun project.<br>
-        Weather data provided by <a href="https://open-meteo.com/" target="_blank" style="color:#ffe81f;">Open-Meteo</a></footer>
+  <div id="planet">Loading...</div>
 
-    <script>
-        const weatherDiv = document.getElementById('weather');
-        const input = document.getElementById('locationInput');
-        const button = document.getElementById('getWeatherBtn');
+  <script>
+    const planetMap = [
+      { name: "Hoth", min: -100, max: 5, img: "images/hoth.jpg" },
+      { name: "Alderaan", min: 5, max: 15, img: "images/alderaan.jpg" },
+      { name: "Coruscant", min: 15, max: 25, img: "images/coruscant.jpg" },
+      { name: "Tatooine", min: 25, max: 100, img: "images/tatooine.jpg" }
+    ];
+    const fallbackPlanet = {
+      name: "Mandalore",
+      img: "images/mandalore.jpg"
+    };
 
-        button.addEventListener('click', () => {
-            const location = input.value.trim();
-            if (!location) {
-                weatherDiv.innerHTML = '<p>Please enter a location.</p>';
-                return;
-            }
-            weatherDiv.innerHTML = '<p class="loading">Loading weather data...</p>';
-            fetchWeather(location);
-        });
+    async function getWeather(city) {
+      try {
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}`);
+        const geoData = await geoRes.json();
+        if (!geoData.results || geoData.results.length === 0) throw new Error("Invalid city");
 
-        function fetchWeather(location) {
-            // Fixed weather for Star Wars planets
-            const starWarsPlanets = {
-                'tatooine': { temp: 45, desc: 'Hot and dry desert planet' },
-                'hoth': { temp: -30, desc: 'Freezing ice planet' },
-                'endor': { temp: 22, desc: 'Forest moon with mild climate' },
-                'naboo': { temp: 25, desc: 'Temperate and lush planet' },
-                'coruscant': { temp: 20, desc: 'Urban city planet' }
-            };
+        const { latitude, longitude } = geoData.results[0];
+        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+        const weatherData = await weatherRes.json();
+        const temp = weatherData.current_weather.temperature;
 
-            const key = location.toLowerCase();
-            if (starWarsPlanets[key]) {
-                const data = starWarsPlanets[key];
-                weatherDiv.innerHTML = `<h2>${location} Weather</h2><p>Temperature: ${data.temp}°C</p><p>${data.desc}</p>`;
-                return;
-            }
+        let planet = planetMap.find(p => temp >= p.min && temp < p.max) || fallbackPlanet;
+        document.body.style.backgroundImage = `url('${planet.img}')`;
+        document.getElementById("planet").innerText = `The weather is like ${planet.name}`;
+      } catch (err) {
+        document.body.style.backgroundImage = `url('${fallbackPlanet.img}')`;
+        document.getElementById("planet").innerText = `The weather is like ${fallbackPlanet.name}`;
+      }
+    }
 
-            // Use Open-Meteo API for real locations
-            // First, get latitude and longitude from Open-Meteo geocoding API
-            fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1`)
-                .then(response => {
-                    if (!response.ok) throw new Error('Location not found');
-                    return response.json();
-                })
-                .then(data => {
-                    if (!data.results || data.results.length === 0) {
-                        throw new Error('Location not found');
-                    }
-                    const place = data.results[0];
-                    const lat = place.latitude;
-                    const lon = place.longitude;
-                    // Fetch weather data
-                    return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
-                })
-                .then(response => {
-                    if (!response.ok) throw new Error('Weather data not available');
-                    return response.json();
-                })
-                .then(data => {
-                    const temp = data.current_weather.temperature;
-                    const windspeed = data.current_weather.windspeed;
-                    weatherDiv.innerHTML = `<h2>${location} Weather</h2><p>Temperature: ${temp}°C</p><p>Wind Speed: ${windspeed} km/h</p>`;
-                })
-                .catch(err => {
-                    weatherDiv.innerHTML = `<p>Error: ${err.message}</p>`;
-                });
-        }
-    </script>
+    const city = prompt("Enter your city:");
+    getWeather(city);
+  </script>
 </body>
 </html>
