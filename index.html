@@ -35,6 +35,14 @@
       border-radius: 10px;
       margin-bottom: 20px;
     }
+    #planet-desc {
+      max-width: 600px;
+      font-size: 1em;
+      background-color: rgba(0,0,0,0.5);
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
     #refresh-btn {
       padding: 10px 20px;
       font-size: 1em;
@@ -65,6 +73,7 @@
     </div>
     <div id="planet" style="display:none;"></div>
     <img id="planet-img" style="display:none;" />
+    <div id="planet-desc" style="display:none;"></div>
     <button id="refresh-btn" style="display:none;">Try Again</button>
   </div>
 
@@ -81,6 +90,14 @@
       message: "Sorry! This city is not in our database."
     };
 
+    const planetDescriptions = {
+      Hoth: "An icy planet covered in snow and glaciers. Known for the Rebel Alliance's Echo Base.",
+      Alderaan: "A peaceful and beautiful world with lush landscapes. Destroyed by the Death Star.",
+      Coruscant: "A bustling city-planet and galactic capital, covered entirely in skyscrapers.",
+      Tatooine: "A desert planet with twin suns. Home to Anakin and Luke Skywalker.",
+      Mandalore: "A war-torn world with a rich warrior culture and legendary Mandalorians."
+    };
+
     async function getWeather(city) {
       try {
         const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}`);
@@ -93,7 +110,8 @@
         const temp = weatherData.current_weather.temperature;
 
         let planet = planetMap.find(p => temp >= p.min && temp < p.max) || fallbackPlanet;
-        showPlanet(planet.name, planet.img, `The weather is like ${planet.name}`);
+        const message = planet.name === "Mandalore" ? fallbackPlanet.message : `The weather is like ${planet.name}`;
+        showPlanet(planet.name, planet.img, message);
       } catch (err) {
         showPlanet(fallbackPlanet.name, fallbackPlanet.img, fallbackPlanet.message);
       }
@@ -103,9 +121,15 @@
       document.getElementById("city-form").style.display = "none";
       document.getElementById("planet").innerText = message;
       document.getElementById("planet").style.display = "block";
+
       const img = document.getElementById("planet-img");
       img.src = imgPath;
       img.style.display = "block";
+
+      const desc = document.getElementById("planet-desc");
+      desc.innerText = planetDescriptions[name] || "";
+      desc.style.display = "block";
+
       document.getElementById("refresh-btn").style.display = "inline-block";
       document.body.style.backgroundImage = `url('${imgPath}')`;
     }
